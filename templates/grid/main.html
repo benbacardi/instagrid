@@ -1,0 +1,143 @@
+{% extends 'grid/base.html' %}
+
+{% block content %}
+
+<div id='user'>
+    <a href=''>
+    <img class='profile' src='{{user.profile_picture}}' />
+    {{user.full_name}}<br />
+    <span>@{{user.username}}</span></a>
+</div>
+
+<br /><br />
+
+<a href='/unlink/'>Unlink</a>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" ></script>
+<script type='text/javascript'>
+
+max_id = '{{max_id}}';
+media_urls = [
+{% for media in recents %}
+    '{{media.get_standard_resolution_url}}'{% if not forloop.last %},{% endif %}
+{% endfor %}
+];
+
+function draw() {
+  var cols = parseInt($('#col_count').val());
+  var rows = parseInt($('#row_count').val());
+  var size = parseInt($('#size').val());
+  var border = parseInt($('#border').val());
+  var colour = $('#colour').val();
+  var $grid = $('#grid');
+  $grid.width(((size * cols) + (border * cols)) + 'px');
+  $grid.height(((size * rows) + (border * rows)) + 'px');
+  $grid.css('backgroundColor', colour);
+  $grid.css('paddingLeft', border + 'px');
+  $grid.css('paddingTop', border + 'px');
+  $grid.find('img').remove();
+  for (var i=0; i<(rows*cols); i++) {
+    if (i > media_urls.length - 1) {
+      $.get('/recent/', {'max_id': max_id}, function(a) {
+        media_urls = media_urls.concat(a.urls);
+        max_id = a.max_id;
+        draw();
+      });
+      break;
+    } else {
+      $img = $("<img src='" + media_urls[i] + "' />");
+      $img.css('marginRight', border + 'px');
+      $img.css('marginBottom', border + 'px');
+      $img.width(size);
+      $img.height(size);
+      $grid.append($img);
+    }
+  }
+}
+
+$(document).ready(function() {
+  $('input, select').change(draw);
+  draw();
+
+  $('#submit').click(function(e) {
+    e.preventDefault();
+    $.post('/generate/', $('form').serialize(), function(a) {
+      alert(a);
+    });
+  });
+
+  $('.control a').click(function(e) {
+    e.preventDefault();
+    var op = $(this).data('op');
+    var $control = $('#' + $(this).data('control'));
+    var val = parseInt($control.val());
+    var delta = $(this).data('val');
+    if (!delta) {
+        delta = 1;
+    }
+    if (op == 'inc') {
+      if (val + delta <= parseInt($control.attr('max'))) {
+        $control.val(val + delta);
+        draw();
+      }
+    } else {
+      if (val - delta >= parseInt($control.attr('min'))) {
+        $control.val(val - delta);
+        draw();
+      }
+    }
+  });
+
+});
+
+</script>
+
+<style>
+
+
+
+</style>
+
+<form method='post' action='/generate/'>
+{% csrf_token %}
+
+<div class='control'>
+    <strong>Rows</strong>
+    <a href='#' data-control='row_count' data-op='dec'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='row_count' id='row_count' min='1' max='20' value='3' />
+    <a href='#' data-control='row_count' data-op='inc'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Columns</strong>
+    <a href='#' data-control='col_count' data-op='dec'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='col_count' id='col_count' min='1' max='20' value='4' />
+    <a href='#' data-control='col_count' data-op='inc'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Image size</strong>
+    <a href='#' data-control='size' data-op='dec' data-val='10'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='size' id='size' min='10' max='1000' value='100' />
+    <a href='#' data-control='size' data-op='inc' data-val='10'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Border width</strong>
+    <a href='#' data-control='border' data-op='dec'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='border' id='border' min='1' max='20' value='1' />
+    <a href='#' data-control='border' data-op='inc'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Border colour</strong>
+    <select id='colour' name='colour'>
+        <option value='black'>Black</option>
+        <option value='white'>White</option>
+    </select>
+</div>
+
+<div id='grid'>
+</div>
+
+<input id='submit' type='submit' value='Generate' />
+
+</form>
+
+{% endblock %}

@@ -1,0 +1,267 @@
+<html>
+
+<head>
+
+    <title>Instagrid</title>
+
+    <link href='http://fonts.googleapis.com/css?family=Sanchez:400italic,400' rel='stylesheet' type='text/css'>
+
+    <style>
+
+    body {
+        padding: 0;
+        margin: 0;
+        background: #edeeef;
+        font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        font-size: 16px;
+    }
+
+    #header {
+        padding: 20px 30px;
+        background: #fff;
+    }
+
+    #header h1 {
+        margin: 0;
+        padding: 0;
+        font-size: 1.2em;
+    }
+
+    #header h1 a {
+        font-family: 'Sanchez', serif;
+        letter-spacing: -0.1em;
+        line-height: 1.875em;
+    }
+
+    #header a {
+        text-decoration: none;
+        color: rgb(18, 56, 88);
+    }
+
+    #header a:hover {
+        color: #222;
+    }
+
+    .wrapper {
+        max-width: 60em;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .meta {
+        display: block;
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 0;
+        line-height: 1.875em;
+    }
+
+    .meta img {
+        width: 1.875em;
+        height: 1.875em;
+        -webkit-border-radius: 3px;
+        float: left;
+    }
+
+    .meta strong {
+        display: inline-block;
+        margin-left: 0.625em;
+        font-size: 0.8em;
+    }
+
+
+
+    #grid {
+      margin: 20px auto;
+      width: 300px;
+      height: 300px;
+      background: black;
+    }
+
+    #grid img {
+      display: block;
+      float: left;
+    }
+
+    .control {
+        display: inline-block;
+        width: 19%;
+        text-align: center;
+    }
+
+    .control strong {
+        display: block;
+    }
+
+    .control input[type=text] {
+        background: transparent;
+        text-align: center;
+        width: 50px;
+        border: none;
+        outline: none;
+        font-size: 1.2em;
+    }
+
+    .control a {
+        text-decoration: none;
+    }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div id='header'>
+        <div class='wrapper'>
+            <h1><a href='#'>Instagrid</a></h1>
+            {% if user %}
+                <a href='http://instagram.com/{{user.username}}' class='meta'>
+                    <img src='{{user.profile_picture}}' />
+                    <strong>{{user.username}}</strong>
+                </a>
+            {% else %}
+
+            {% endif %}
+        </div>
+    </div>
+
+    <div class='wrapper'>
+
+<br /><br />
+
+<a href='/unlink/'>Unlink</a>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" ></script>
+<script type='text/javascript'>
+
+max_id = '{{max_id}}';
+media_urls = [
+{% for media in recents %}
+    '{{media.get_standard_resolution_url}}'{% if not forloop.last %},{% endif %}
+{% endfor %}
+];
+
+function draw() {
+  var cols = parseInt($('#col_count').val());
+  var rows = parseInt($('#row_count').val());
+  var size = parseInt($('#size').val());
+  var border = parseInt($('#border').val());
+  var colour = $('#colour').val();
+  var $grid = $('#grid');
+  $grid.width(((size * cols) + (border * cols)) + 'px');
+  $grid.height(((size * rows) + (border * rows)) + 'px');
+  $grid.css('backgroundColor', colour);
+  $grid.css('paddingLeft', border + 'px');
+  $grid.css('paddingTop', border + 'px');
+  $grid.find('img').remove();
+  for (var i=0; i<(rows*cols); i++) {
+    if (i > media_urls.length - 1) {
+      $.get('/recent/', {'max_id': max_id}, function(a) {
+        media_urls = media_urls.concat(a.urls);
+        max_id = a.max_id;
+        draw();
+      });
+      break;
+    } else {
+      $img = $("<img src='" + media_urls[i] + "' />");
+      $img.css('marginRight', border + 'px');
+      $img.css('marginBottom', border + 'px');
+      $img.width(size);
+      $img.height(size);
+      $grid.append($img);
+    }
+  }
+}
+
+$(document).ready(function() {
+  $('input, select').change(draw);
+  draw();
+
+  $('#submit').click(function(e) {
+    e.preventDefault();
+    $.post('/generate/', $('form').serialize(), function(a) {
+      alert(a);
+    });
+  });
+
+  $('.control a').click(function(e) {
+    e.preventDefault();
+    var op = $(this).data('op');
+    var $control = $('#' + $(this).data('control'));
+    var val = parseInt($control.val());
+    var delta = $(this).data('val');
+    if (!delta) {
+        delta = 1;
+    }
+    if (op == 'inc') {
+      if (val + delta <= parseInt($control.attr('max'))) {
+        $control.val(val + delta);
+        draw();
+      }
+    } else {
+      if (val - delta >= parseInt($control.attr('min'))) {
+        $control.val(val - delta);
+        draw();
+      }
+    }
+  });
+
+});
+
+</script>
+
+<style>
+
+
+
+</style>
+
+<form method='post' action='/generate/'>
+{% csrf_token %}
+
+<div class='control'>
+    <strong>Rows</strong>
+    <a href='#' data-control='row_count' data-op='dec'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='row_count' id='row_count' min='1' max='20' value='3' />
+    <a href='#' data-control='row_count' data-op='inc'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Columns</strong>
+    <a href='#' data-control='col_count' data-op='dec'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='col_count' id='col_count' min='1' max='20' value='4' />
+    <a href='#' data-control='col_count' data-op='inc'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Image size</strong>
+    <a href='#' data-control='size' data-op='dec' data-val='10'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='size' id='size' min='10' max='1000' value='100' />
+    <a href='#' data-control='size' data-op='inc' data-val='10'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Border width</strong>
+    <a href='#' data-control='border' data-op='dec'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/minus-white.png' /></a>
+    <input type='text' name='border' id='border' min='1' max='20' value='1' />
+    <a href='#' data-control='border' data-op='inc'><img src='http://p.yusukekamiyamane.com/icons/search/fugue/icons/plus-white.png' /></a>
+</div>
+<div class='control'>
+    <strong>Border colour</strong>
+    <select id='colour' name='colour'>
+        <option value='black'>Black</option>
+        <option value='white'>White</option>
+    </select>
+</div>
+
+<div id='grid'>
+</div>
+
+<input id='submit' type='submit' value='Generate' />
+
+</form>
+
+    </div>
+
+</body>
+
+</html>

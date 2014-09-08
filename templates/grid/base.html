@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <title>Instagrid</title>
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" ></script>
+    <script type='text/javascript'>
+
+    connected = {% if user %}true{% else %}false{% endif %};
+
+    max_id = '{{max_id}}';
+    media_urls = [
+    {% for media in recents %}
+        '{{media.get_standard_resolution_url}}'{% if not forloop.last %},{% endif %}
+    {% endfor %}
+    ];
+
+    function addImage($parent, src, size, border) {
+        $img = $("<img src='" + src + "' />");
+        $img.css('marginRight', border + 'px');
+        $img.css('marginBottom', border + 'px');
+        $img.width(size);
+        $img.height(size);
+        $parent.append($img);
+    }
+
+    function draw() {
+        var cols = parseInt($('#col_count').val());
+        var rows = parseInt($('#row_count').val());
+        var size = parseInt($('#size').val());
+        var border = parseInt($('#border').val());
+        var colour = $('#colour').val();
+        var $grid = $('#grid');
+        $grid.width(((size * cols) + (border * cols)) + 'px');
+        $grid.height(((size * rows) + (border * rows)) + 'px');
+        $grid.css('backgroundColor', colour);
+        $grid.css('paddingLeft', border + 'px');
+        $grid.css('paddingTop', border + 'px');
+        $grid.find('img').remove();
+        for (var i=0; i<(rows*cols); i++) {
+            if (!connected) {
+                addImage($grid, "http://placehold.it/200x200&text=" + (i + 1), size, border);
+            } else {
+                if (i > media_urls.length - 1) {
+                    $.get('/recent/', {'max_id': max_id}, function(a) {
+                        media_urls = media_urls.concat(a.urls);
+                        max_id = a.max_id;
+                        draw();
+                    });
+                    break;
+                } else {
+                    addImage($grid, media_urls[i], size, border);
+                }
+            }
+        }
+    }
+
+    function reset() {
+        draw();
+        $('.control').slideDown();
+        $('.success').slideUp();
+        $('.preview').fadeIn();
+        $('#generate').html('Generate Image').removeClass('done');
+        $('.done').fadeOut();
+    }
+
+    function generated(result) {
+        console.log(result);
+        $('.success').slideDown();
+        $('.generating, .preview').fadeOut();
+        $('.done').fadeIn();
+        $('#grid').find('img').remove();
+        var border = parseInt($('#border').val());
+        var width = $('#grid').width() + border;
+        var height = $('#grid').height() + border;
+        $('#grid').css('padding', '0').css('width', width + 'px').css('height', height + 'px').append(
+            $("<img></img>").attr('src', result)
+        );
+        $('#generate').html('Create another...').addClass('done').removeClass('disabled');
+    }
+
+    $(document).ready(function() {
+
+        $('input, select').change(draw);
+        draw();
+
+        $('#generate').click(function(e) {
+            e.preventDefault();
+            if ($(this).hasClass('done')) {
+                reset();
+            } else if (!$(this).hasClass('disabled')) {
+                $(this).addClass('disabled');
+                $('.control').slideUp();
+                $('.generating').fadeIn();
+                $(this).html('Generating...');
+                $.post('/generate/', $('form').serialize(), generated);
+            }
+        });
+
+        $('.control a').click(function(e) {
+            e.preventDefault();
+            var op = $(this).data('op');
+            var $control = $('#' + $(this).data('control'));
+            var val = parseInt($control.val());
+            var delta = $(this).data('val');
+            if (!delta) {
+                delta = 1;
+            }
+            if (op == 'inc') {
+                if (val + delta <= parseInt($control.attr('max'))) {
+                    $control.val(val + delta);
+                    draw();
+                }
+            } else {
+                if (val - delta >= parseInt($control.attr('min'))) {
+                    $control.val(val - delta);
+                    draw();
+                }
+            }
+        });
+
+    });
+
+    </script>
+
+    <link rel='stylesheet' type='text/css' href='{{STATIC_URL}}css/reset.css'></link>
+    <link href='http://fonts.googleapis.com/css?family=Sintony:400,700' rel='stylesheet' type='text/css'>
+
+    <style>
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        height: 100%;
+    }
+
+    body {
+        font-family: 'Sintony';
+        font-size: 16px;
+        background: #f3f4f5;
+    }
+
+    #wrapper {
+        min-height: 100%;
+        height: auto !important;
+        height: 100%;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    /* 169, 171, 177 */
+
+    #sidebar {
+        /* Positioning */
+        width: 260px;
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+
+        /* Background */
+        background: rgb(80, 84, 96);
+
+        /* Borders */
+        border-right: 1px solid rgb(61, 65, 73);
+        box-shadow:
+            0 0 3px 3px rgba(0, 0, 0, 0.2),
+            4px 0 rgb(199, 201, 203),
+            5px 0 rgb(169, 171, 177);
+    }
+
+    #sidebar a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+    }
+
+    #sidebar a:hover {
+        color: rgb(255, 255, 255);
+    }
+
+    #sidebar > header, #sidebar > a, #sidebar > div, #sidebar > footer {
+        display: block;
+        position: relative;
+        padding: 10px;
+        border-bottom: 1px solid rgb(61, 65, 73);
+        border-top: 1px solid rgb(93, 99, 111);
+        font-weight: normal;
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        font-size: 0.75em;
+    }
+
+    #sidebar header {
+        font-size: 1.2em;
+        border: none;
+        padding-bottom: 0;
+    }
+
+    #sidebar > .button {
+        margin: 20px 40px;
+        background-color: #7fbf4d;
+        background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #7fbf4d), color-stop(100%, #63a62f));
+        background-image: -webkit-linear-gradient(top, #7fbf4d, #63a62f);
+        background-image: -moz-linear-gradient(top, #7fbf4d, #63a62f);
+        background-image: -ms-linear-gradient(top, #7fbf4d, #63a62f);
+        background-image: -o-linear-gradient(top, #7fbf4d, #63a62f);
+        background-image: linear-gradient(top, #7fbf4d, #63a62f);
+        border: 1px solid #63a62f;
+        border-bottom: 1px solid #5b992b;
+        -webkit-border-radius: 3px;
+        -moz-border-radius: 3px;
+        border-radius: 3px;
+        -webkit-box-shadow: inset 0 1px 0 0 #96ca6d;
+        -moz-box-shadow: inset 0 1px 0 0 #96ca6d;
+        box-shadow: inset 0 1px 0 0 #96ca6d;
+        color: #fff;
+        padding: 7px 0 8px 0;
+        text-align: center;
+        text-shadow: 0 -1px 0 #4c9021;
+        cursor: pointer;
+    }
+
+    #sidebar > .button:hover {
+        background-color: #76b347;
+        background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #76b347), color-stop(100%, #5e9e2e));
+        background-image: -webkit-linear-gradient(top, #76b347, #5e9e2e);
+        background-image: -moz-linear-gradient(top, #76b347, #5e9e2e);
+        background-image: -ms-linear-gradient(top, #76b347, #5e9e2e);
+        background-image: -o-linear-gradient(top, #76b347, #5e9e2e);
+        background-image: linear-gradient(top, #76b347, #5e9e2e);
+        -webkit-box-shadow: inset 0 1px 0 0 #8dbf67;
+        -moz-box-shadow: inset 0 1px 0 0 #8dbf67;
+        box-shadow: inset 0 1px 0 0 #8dbf67;
+    }
+
+    #sidebar > a:hover {
+        background: rgb(87, 92, 104);
+    }
+
+    #sidebar > .header, #sidebar > footer {
+        background: rgb(64, 69, 78);
+        box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.2);
+        border-bottom-color: rgb(51, 54, 58);
+        font-size: 0.75em;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    #sidebar > .header + div, #sidebar > .header + a {
+        border-top: none;
+    }
+
+    #sidebar .info, #sidebar .warning, #sidebar .slogan {
+        color: rgba(255, 255, 255, 0.6);
+        line-height: 1.2em;
+        padding-left: 50px;
+    }
+
+    #sidebar .slogan {
+        padding-left: 10px;
+        border-top: none;
+        border-bottom: none;
+    }
+
+    #sidebar .info:after, #sidebar .warning:after {
+        content: "";
+        background: transparent url({{STATIC_URL}}images/info.png) no-repeat 10px 50%;
+        opacity: 0.6;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        position: absolute;
+        z-index: -1;   
+    }
+
+    #sidebar .warning:after {
+        background-image: url({{STATIC_URL}}images/warning.png);
+    }
+
+    #sidebar .success {
+        display: none;
+        color: #7FBF4D;
+    }
+
+    #sidebar .success:after {
+        background-image: url({{STATIC_URL}}images/tick.png);
+    }
+
+    #sidebar .account {
+        min-height: 50px;
+        line-height: 30px;
+    }
+
+    #sidebar .account img {
+        float: left;
+        width: 30px;
+        height: 30px;
+        margin-right: 10px;
+        -webkit-border-radius: 2px;
+        border: 1px solid rgb(61, 65, 73);
+    }
+
+    #sidebar .control {
+        line-height: 2em;
+    }
+
+    #sidebar .control div {
+        display: inline;
+        float: right;
+    }
+
+    #sidebar .control div a {
+        display: inline-block;
+        width: 15px;
+        height: 100%;
+        text-indent: -100px;
+        overflow: hidden;
+        outline: none;
+        background: transparent url({{STATIC_URL}}images/minus.png) no-repeat 50% 40%;
+        opacity: 0.6;
+    }
+
+    #sidebar .control div a.inc {
+        background-image: url({{STATIC_URL}}images/plus.png);
+    }
+
+    #sidebar .control div a:hover {
+        opacity: 1;
+    }
+
+    #sidebar input {
+        border: none;
+        background: transparent;
+        font-size: 1.2em;
+        text-align: center;
+        width: 50px;
+        outline: none;
+        color: rgb(255, 255, 255);
+    }
+
+    #sidebar > footer {
+        position: fixed;
+        bottom: 0;
+        text-transform: none;
+        width: 260px;
+        letter-spacing: normal;
+        font-size: 0.6em;
+    }
+
+    #grid {
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        position: relative;
+        overflow: hidden;
+        margin: 40px;
+    }
+
+    #grid img, #grid {
+        box-sizing: content-box;
+    }
+
+    #grid img {
+        display: block;
+        float: left;
+    }
+
+    #grid .preview, #grid .done {
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        padding: 5px;
+        position: absolute;
+        top: 30px;
+        right: -110px;
+        font-size: 0.75em;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        width: 300px;
+        text-align: center;
+        -webkit-transform: rotate(45deg);
+    }
+
+    #grid .done {
+        background: #7FBF4D;
+        display: none;
+        box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+    }
+
+    #grid .generating {
+        display: none;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8) url({{STATIC_URL}}images/load.gif) no-repeat 50% 50%;
+        position: absolute;
+        text-align: center;
+    }
+
+    #main {
+        padding-left: 260px;
+    }
+
+    </style>
+
+</head>
+
+<body>
+
+<div id='wrapper'>
+
+    <form method='post' action='/generate/'>
+
+    {% csrf_token %}
+
+    <div id='sidebar'>
+
+        <header>
+            <h1>Instagrid</h1>    
+        </header>
+
+        <div class='slogan'>
+            Generate a single image from a grid of your Instagram photos.
+        </div>
+
+        <div class='header'>
+            Account
+        </div>
+
+        {% if user %}
+        <a href='http://instagram.com/{{user.username}}' class='account'>
+            <img src='{{user.profile_picture}}' />
+            {{user.full_name}}
+        </a>
+        <a href='{% url grid.views.unlink %}'>Unlink from Instagram&hellip;</a>
+        {% else %}
+        <a href='{% url grid.views.link %}'>Connect with Instagram&hellip;</a>
+        <div class='info'>
+            You need to connect with Instagram to allow us access to your photos.
+        </div>
+        {% endif %}
+
+        <div class='header'>
+            Options
+        </div>
+
+        <div class='control'>
+            Rows
+            <div>
+                <a href='#' data-control='row_count' data-op='dec'>-</a>
+                <input type='text' name='row_count' id='row_count' min='1' max='20' value='3' />
+                <a href='#' class='inc' data-control='row_count' data-op='inc'>+</a>
+            </div>
+        </div>
+
+        <div class='control'>
+            Columns
+            <div>
+                <a href='#' data-control='col_count' data-op='dec'>-</a>
+                <input type='text' name='col_count' id='col_count' min='1' max='20' value='4' />
+                <a href='#' class='inc' data-control='col_count' data-op='inc'>+</a>
+            </div>
+        </div>
+
+        <div class='control'>
+            Image Size
+            <div>
+                <a href='#' data-control='size' data-op='dec' data-val='10'>-</a>
+                <input type='text' name='size' id='size' min='10' max='1000' value='120' />
+                <a href='#' class='inc' data-control='size' data-op='inc' data-val='10'>+</a>
+            </div>
+        </div>
+
+        <div class='control'>
+            Border Width
+            <div>
+                <a href='#' data-control='border' data-op='dec'>-</a>
+                <input type='text' name='border' id='border' min='1' max='20' value='1' />
+                <a href='#' class='inc' data-control='border' data-op='inc'>+</a>
+            </div>
+        </div>
+
+        <div class='control'>
+            Border Colour
+            <div>
+                <select id='colour' name='colour'>
+                    <option value='white'>White</option>
+                    <option value='black'>Black</option>
+                </select>
+            </div>
+        </div>
+
+        {% if user %}
+        <div class='info success'>
+            Your image has been generated! To save, right click the image on the right and choose <em>Save</em>.
+        </div>
+        <a class='button' href='#' id='generate'>Generate Image</a>
+        {% else %}
+        <div class='warning'>
+            You need to connect with Instagram before you can generate your image!
+        </div>
+        {% endif %}
+
+
+        <footer>
+            Created by <a href='#'>Ben Cardy</a>.
+        </footer>
+
+    </div>
+
+    </form>
+
+    <div id='main'>
+
+        <div id='grid'>
+            <div class='preview'>Preview</div>
+            <div class='preview done'>Done!</div>
+            <div class='generating'></div>
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>

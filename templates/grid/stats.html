@@ -1,0 +1,72 @@
+<html>
+
+<head>
+
+    <title>Foo</title>
+
+</head>
+
+<body>
+
+<h2>Filters</h2>
+
+filter_values = [{% for filter, count in filters %}{{count}}{% if not forloop.last %}, {% endif %}{% endfor %}];<br />
+filter_ticks = [{% for filter, count in filters %}{{filter}}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+<h2>Dates</h2>
+
+date_values = [{% for month, count in dates %}{{count}}{% if not forloop.last %}, {% endif %}{% endfor %}];<br />
+date_ticks = [{% for month, count in dates %}'{{month|date:'M y'}}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+<h2>Days</h2>
+
+day_values = [
+    {% for day, vals in days %}
+    {% endfor %}
+];
+
+<h2>Hours</h2>
+<ol>
+    {% for hour, count in hours %}
+    <li>{{hour}}: {{count}}</li>
+    {% endfor %}
+</ol>
+
+<h2>Top Likes</h2>
+<ol>
+    {% for image, count in like_counts %}
+    <li>{{image}}: {{count}}</li>
+    {% endfor %}
+</ol>
+
+<h2>Top Comments</h2>
+<ol>
+    {% for image, count in comment_counts %}
+    <li>{{image}}: {{count}}</li>
+    {% endfor %}
+</ol>
+
+<h2>Top Likers</h2>
+<ol>
+    {% for user, count in likes %}
+    <li>{{user}}: {{count}}</li>
+    {% endfor %}
+</ol>
+
+<h2>Top Commenters</h2>
+<ol>
+    {% for user, count in comments %}
+    <li>{{user}}: {{count}}</li>
+    {% endfor %}
+</ol>
+
+<h2>Top Followers</h2>
+<ol>
+    {% for user, count in followers %}
+    <li>{{user}}: {{count}} likes</li>
+    {% endfor %}
+</ol>
+
+</body>
+
+</html>
